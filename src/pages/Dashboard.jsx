@@ -76,15 +76,26 @@ export default function Dashboard() {
   // 切换链接开关
   const handleToggleLink = async (newActive) => {
     try {
-      // 使用 RPC 函数切换链接开关
-      const { error } = await supabase.rpc('toggle_link_active', {
-        p_active: newActive,
-      });
+      // 方式1：直接更新
+      let { error } = await supabase
+        .from('profiles')
+        .update({ link_active: newActive, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      // 方式2：RPC 回退
+      if (error) {
+        const { error: rpcError } = await supabase.rpc('toggle_link_active', {
+          p_active: newActive,
+        });
+        error = rpcError;
+      }
+
       if (error) throw error;
       await refreshProfile();
       return { success: true };
     } catch (err) {
-      return { success: false, error: getErrorMessage(err) };
+      const errMsg = err?.message || String(err);
+      return { success: false, error: errMsg };
     }
   };
 

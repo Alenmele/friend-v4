@@ -79,23 +79,45 @@ export default function OwnerProfileEdit({ onSaved }) {
 
     setSaving(true);
     try {
-      // 使用 RPC 函数保存资料，绕过 RLS 权限限制
-      const { error } = await supabase.rpc('update_owner_profile', {
-        p_nickname: form.nickname.trim(),
-        p_gender: form.gender,
-        p_age: Number(form.age),
-        p_wechat: form.wechat.trim(),
-        p_bio: form.bio.trim(),
-        p_expectation: form.expectation.trim(),
-        p_photos: form.photos,
-        p_avatar: form.photos[0] || null,
-      });
+      const updateData = {
+        nickname: form.nickname.trim(),
+        gender: form.gender,
+        age: Number(form.age),
+        wechat: form.wechat.trim(),
+        bio: form.bio.trim(),
+        expectation: form.expectation.trim(),
+        photos: form.photos,
+        avatar: form.photos[0] || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      // 方式1：直接更新（RLS 策略允许）
+      let { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+
+      // 方式2：如果直接更新失败，尝试 RPC 函数
+      if (error) {
+        console.warn('直接更新失败，尝试 RPC:', error.message);
+        const { error: rpcError } = await supabase.rpc('update_owner_profile', {
+          p_nickname: form.nickname.trim(),
+          p_gender: form.gender,
+          p_age: Number(form.age),
+          p_wechat: form.wechat.trim(),
+          p_bio: form.bio.trim(),
+          p_expectation: form.expectation.trim(),
+          p_photos: form.photos,
+          p_avatar: form.photos[0] || null,
+        });
+        error = rpcError;
+      }
 
       if (error) throw error;
 
       // 首次保存：生成 link_id
       if (!profile?.link_id) {
-        const { data: linkId, error: linkErr } = await supabase.rpc('generate_link_id', {
+        const { error: linkErr } = await supabase.rpc('generate_link_id', {
           p_user_id: user.id,
         });
         if (linkErr) throw linkErr;
@@ -105,8 +127,10 @@ export default function OwnerProfileEdit({ onSaved }) {
       showToast('💾 资料已保存', 'success');
       onSaved?.();
     } catch (err) {
-      console.error('保存失败:', err.message);
-      showToast(getErrorMessage(err), 'error');
+      console.error('保存失败:', err);
+      // 显示真实错误信息，方便排查
+      const errMsg = err?.message || err?.error || String(err);
+      showToast('保存失败：' + errMsg, 'error', 5000);
     } finally {
       setSaving(false);
     }
