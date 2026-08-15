@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../common/Button.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { supabase } from '../../api/supabase.js';
+import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
  * 链接管理卡片
@@ -18,7 +19,9 @@ export default function LinkManageCard({ profile, onToggleLink }) {
 
   const linkId = profile?.link_id;
   const isActive = profile?.link_active !== false;
-  const fullLink = linkId ? `${window.location.origin}/#/u/${linkId}` : '';
+  // 根据部署环境生成正确的访客链接
+  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const fullLink = linkId ? `${window.location.origin}${baseUrl}/u/${linkId}` : '';
 
   const handleCopy = async () => {
     if (!fullLink) {
@@ -55,7 +58,7 @@ export default function LinkManageCard({ profile, onToggleLink }) {
       if (result?.success) {
         showToast(isActive ? '🔒 链接已关闭' : '✅ 链接已开启', 'success');
       } else {
-        showToast(result?.error || '操作失败', 'error');
+        showToast(getErrorMessage(result?.error), 'error');
       }
     } finally {
       setToggling(false);

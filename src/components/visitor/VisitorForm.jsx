@@ -12,6 +12,7 @@ import { useDraft } from '../../hooks/useDraft.js';
 import { validateVisitorForm } from '../../utils/validators.js';
 import { supabase, BUCKETS } from '../../api/supabase.js';
 import { generateFilename } from '../../utils/imageCompress.js';
+import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
  * 访客填写表单
@@ -76,10 +77,10 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
         showToast('✅ 申请已提交，等待主人审核', 'success');
         clearDraft();
       } else {
-        showToast(result?.error || '提交失败，请重试', 'error');
+        showToast(getErrorMessage(result?.error), 'error');
       }
     } catch (err) {
-      showToast(err.message || '提交失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setSubmitting(false);
     }

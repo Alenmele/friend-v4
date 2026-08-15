@@ -5,6 +5,7 @@ import Button from '../components/common/Button.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { validateEmail, validatePassword } from '../utils/validators.js';
+import { getErrorMessage } from '../utils/errorMap.js';
 
 /**
  * 主人登录页 /login
@@ -36,7 +37,7 @@ export default function Login() {
         showToast('✅ 登录成功', 'success');
         navigate('/dashboard');
       } else {
-        showToast(result.error || '登录失败', 'error');
+        showToast(getErrorMessage(result.error), 'error');
       }
     } finally {
       setLoading(false);

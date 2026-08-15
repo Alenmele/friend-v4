@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { supabase, BUCKETS } from '../../api/supabase.js';
 import { validateProfileForm } from '../../utils/validators.js';
 import { generateFilename } from '../../utils/imageCompress.js';
+import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
  * 主人资料编辑
@@ -78,23 +79,17 @@ export default function OwnerProfileEdit({ onSaved }) {
 
     setSaving(true);
     try {
-      const updateData = {
-        nickname: form.nickname.trim(),
-        gender: form.gender,
-        age: Number(form.age),
-        wechat: form.wechat.trim(),
-        bio: form.bio.trim(),
-        expectation: form.expectation.trim(),
-        photos: form.photos,
-        // 头像默认取第一张照片
-        avatar: form.photos[0] || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', user.id);
+      // 使用 RPC 函数保存资料，绕过 RLS 权限限制
+      const { error } = await supabase.rpc('update_owner_profile', {
+        p_nickname: form.nickname.trim(),
+        p_gender: form.gender,
+        p_age: Number(form.age),
+        p_wechat: form.wechat.trim(),
+        p_bio: form.bio.trim(),
+        p_expectation: form.expectation.trim(),
+        p_photos: form.photos,
+        p_avatar: form.photos[0] || null,
+      });
 
       if (error) throw error;
 
@@ -111,7 +106,7 @@ export default function OwnerProfileEdit({ onSaved }) {
       onSaved?.();
     } catch (err) {
       console.error('保存失败:', err.message);
-      showToast(err.message || '保存失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setSaving(false);
     }

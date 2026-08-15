@@ -7,9 +7,11 @@ import VisitorStats from '../components/owner/VisitorStats.jsx';
 import OwnerProfileEdit from '../components/owner/OwnerProfileEdit.jsx';
 import DangerZone from '../components/owner/DangerZone.jsx';
 import VisitorList from '../components/owner/VisitorList.jsx';
+import UserManage from '../components/owner/UserManage.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { supabase } from '../api/supabase.js';
+import { getErrorMessage } from '../utils/errorMap.js';
 
 /**
  * 主人后台 /dashboard
@@ -74,15 +76,15 @@ export default function Dashboard() {
   // 切换链接开关
   const handleToggleLink = async (newActive) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ link_active: newActive, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+      // 使用 RPC 函数切换链接开关
+      const { error } = await supabase.rpc('toggle_link_active', {
+        p_active: newActive,
+      });
       if (error) throw error;
       await refreshProfile();
       return { success: true };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { success: false, error: getErrorMessage(err) };
     }
   };
 
@@ -143,6 +145,7 @@ export default function Dashboard() {
             tabs={[
               { key: 'profile', label: '📝 资料编辑' },
               { key: 'visitors', label: '📋 收到的访客', badge: stats.pending || undefined },
+              { key: 'users', label: '👥 用户管理' },
             ]}
             active={tab}
             onChange={handleTabChange}
@@ -176,6 +179,10 @@ export default function Dashboard() {
               stats={stats}
               onStatsChange={fetchStats}
             />
+          )}
+
+          {tab === 'users' && (
+            <UserManage />
           )}
         </div>
       </div>

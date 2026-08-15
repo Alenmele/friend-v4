@@ -6,6 +6,7 @@ import Modal from '../common/Modal.jsx';
 import PhotoGrid from '../common/PhotoGrid.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { supabase } from '../../api/supabase.js';
+import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
  * 单个访客卡片
@@ -31,7 +32,7 @@ export default function VisitorCard({ visitor, onAction }) {
       showToast(`✅ 已通过${visitor.nickname}的申请`, 'success');
       onAction?.();
     } catch (err) {
-      showToast(err.message || '操作失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActing(false);
     }
@@ -50,7 +51,7 @@ export default function VisitorCard({ visitor, onAction }) {
       setShowRejectModal(false);
       onAction?.();
     } catch (err) {
-      showToast(err.message || '操作失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActing(false);
     }
@@ -68,7 +69,7 @@ export default function VisitorCard({ visitor, onAction }) {
       setShowRevokeModal(false);
       onAction?.();
     } catch (err) {
-      showToast(err.message || '操作失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActing(false);
     }

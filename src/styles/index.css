@@ -43,24 +43,59 @@ body {
   min-height: 100vh;
 }
 
-/* ========== 移动端适配：最大宽度居中 ========== */
+/* ========== 响应式布局适配 ========== */
+/* 基础：移动端适配 */
 .app-wrapper {
   max-width: 480px;
   margin: 0 auto;
   padding: 16px 12px 40px;
 }
 
-@media (min-width: 720px) {
+/* 大屏手机 (481-768px) */
+@media (min-width: 481px) and (max-width: 768px) {
   .app-wrapper {
-    max-width: 560px;
-    padding: 24px 40px 40px;
+    max-width: 520px;
+    padding: 20px 16px 40px;
   }
 }
 
-@media (max-width: 480px) {
+/* 平板 (769-1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .app-wrapper {
+    max-width: 640px;
+    padding: 24px 32px 48px;
+  }
+}
+
+/* 大屏平板/小桌面 (1025-1280px) */
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .app-wrapper {
+    max-width: 720px;
+    padding: 32px 40px 48px;
+  }
+}
+
+/* 桌面 (≥1281px) */
+@media (min-width: 1281px) {
+  .app-wrapper {
+    max-width: 800px;
+    padding: 40px 48px 60px;
+  }
+}
+
+/* 小屏手机 (≤380px) */
+@media (max-width: 380px) {
   .app-wrapper {
     max-width: 100%;
-    padding: 0;
+    padding: 8px 8px 32px;
+  }
+}
+
+/* 中等手机 (381-480px) */
+@media (min-width: 381px) and (max-width: 480px) {
+  .app-wrapper {
+    max-width: 100%;
+    padding: 12px 10px 36px;
   }
 }
 
@@ -208,13 +243,38 @@ body {
   background: #ef4444;
 }
 
-/* ========== 移动端触摸优化 ========== */
+/* ========== 响应式优化 ========== */
+/* 小屏设备触摸优化 */
 @media (max-width: 480px) {
   button, .btn, .tab-item {
     min-height: 44px;
   }
   input, textarea {
     font-size: 16px !important; /* 防止 iOS 缩放 */
+  }
+}
+
+/* 平板及以上 - 增加触摸目标大小 */
+@media (min-width: 769px) {
+  button, .btn {
+    min-height: 40px;
+  }
+}
+
+/* 大屏优化 - 增加字体大小 */
+@media (min-width: 1025px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+/* 超小屏 - 减小内边距 */
+@media (max-width: 360px) {
+  .card {
+    padding: 12px;
+  }
+  .btn-sm {
+    padding: 6px 12px;
   }
 }
 

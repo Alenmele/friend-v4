@@ -8,6 +8,7 @@ import Button from '../components/common/Button.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { supabase } from '../api/supabase.js';
+import { getErrorMessage } from '../utils/errorMap.js';
 
 /**
  * 通知中心 /notifications
@@ -73,7 +74,7 @@ export default function Notifications() {
       showToast('✅ 全部已读', 'success');
       fetchNotifications();
     } catch (err) {
-      showToast(err.message || '操作失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     }
   };
 

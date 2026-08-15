@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { supabase, BUCKETS } from '../../api/supabase.js';
 import { exportCSV, exportJSON, VISITOR_COLUMNS } from '../../utils/exportData.js';
+import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
  * 危险操作区
@@ -44,7 +45,7 @@ export default function DangerZone({ onCleared, onDeleted }) {
         showToast(result.success ? '📊 数据已导出 JSON' : '导出失败', result.success ? 'success' : 'error');
       }
     } catch (err) {
-      showToast(err.message || '导出失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setExporting(false);
     }
@@ -86,7 +87,7 @@ export default function DangerZone({ onCleared, onDeleted }) {
       setShowClearModal(false);
       onCleared?.();
     } catch (err) {
-      showToast(err.message || '清空失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setClearing(false);
     }
@@ -151,7 +152,7 @@ export default function DangerZone({ onCleared, onDeleted }) {
       setShowDeleteModal(false);
       onDeleted?.();
     } catch (err) {
-      showToast(err.message || '注销失败', 'error');
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setDeleting(false);
     }

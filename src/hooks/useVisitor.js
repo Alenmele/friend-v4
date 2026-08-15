@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../api/supabase.js';
 import { storage } from '../utils/storage.js';
+import { getErrorMessage } from '../utils/errorMap.js';
 
 /**
  * 访客身份与状态管理
@@ -119,7 +120,7 @@ export function useVisitor(linkId) {
       return { success: true, visitorId: data };
     } catch (err) {
       console.error('提交申请失败:', err.message);
-      return { success: false, error: err.message };
+      return { success: false, error: getErrorMessage(err) };
     }
   };
 
