@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== 全局变量（与 PRD 10.1 主题色一致） ========== */
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f0f2f6;
+  --primary: #4a8eff;
+  --primary-dark: #3a7aee;
+  --primary-light: #f0f6ff;
+  --text: #1a1a2e;
+  --text-secondary: #6b7280;
+  --text-light: #9aa0b0;
+  --border: #e6eaef;
+  --border-strong: #d0d6df;
+  --danger: #ef4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --radius-card: 20px;
+  --radius-full: 9999px;
+  --shadow-card: 0 4px 16px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.02);
+}
+
+/* ========== 基础样式 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ========== 移动端适配：最大宽度居中 ========== */
+.app-wrapper {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 12px 40px;
+}
+
+@media (min-width: 720px) {
+  .app-wrapper {
+    max-width: 560px;
+    padding: 24px 40px 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-wrapper {
+    max-width: 100%;
+    padding: 0;
+  }
+}
+
+/* ========== 通用工具类 ========== */
+@layer components {
+  .input-box {
+    @apply w-full bg-surface-muted rounded-full px-4 py-3 text-sm text-text border border-transparent
+           focus:outline-none focus:border-primary focus:bg-white transition;
+  }
+
+  .textarea-box {
+    @apply w-full bg-surface-muted rounded-2xl px-4 py-3 text-sm text-text border border-transparent
+           focus:outline-none focus:border-primary focus:bg-white transition resize-none;
+    min-height: 64px;
+    line-height: 1.6;
+  }
+
+  .btn {
+    @apply w-full text-center py-3.5 rounded-full text-[15px] font-semibold border border-border
+           bg-surface text-text cursor-pointer transition active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white border-none shadow-primary hover:bg-primary-dark;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white border-none hover:bg-red-600;
+  }
+
+  .btn-outline {
+    @apply bg-transparent border border-border-strong text-text-secondary hover:bg-surface-muted;
+  }
+
+  .btn-sm {
+    @apply py-2 px-4 text-xs w-auto inline-block;
+  }
+
+  .card {
+    @apply bg-surface border border-border rounded-card p-4 mb-3 shadow-card;
+  }
+
+  .card-brand {
+    @apply bg-primary-light border-primary;
+  }
+
+  .tag {
+    @apply text-[11px] font-semibold px-3 py-[3px] rounded-full inline-block;
+  }
+
+  .tag-pending {
+    @apply bg-amber-50 text-amber-700;
+  }
+
+  .tag-approved {
+    @apply bg-emerald-50 text-emerald-700;
+  }
+
+  .tag-rejected {
+    @apply bg-red-50 text-red-700;
+  }
+
+  .tag-revoked {
+    @apply bg-surface-muted text-text-secondary;
+  }
+
+  .tag-locked {
+    @apply bg-surface-muted text-text-secondary;
+  }
+
+  .tabbar {
+    @apply flex bg-surface-muted rounded-[40px] p-[3px] mb-4;
+  }
+
+  .tab-item {
+    @apply flex-1 text-center py-2 rounded-[40px] text-[13px] font-medium text-text-secondary
+           cursor-pointer transition relative;
+  }
+
+  .tab-item.active {
+    @apply bg-white text-text shadow-sm;
+  }
+}
+
+/* ========== 动画 ========== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+/* ========== Toast 容器 ========== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: 90%;
+  max-width: 440px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.toast-item {
+  background: #1a1a2e;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  pointer-events: auto;
+  animation: fadeInUp 0.3s ease;
+  width: 100%;
+  text-align: center;
+}
+
+.toast-item.success {
+  background: #10b981;
+}
+
+.toast-item.error {
+  background: #ef4444;
+}
+
+/* ========== 移动端触摸优化 ========== */
+@media (max-width: 480px) {
+  button, .btn, .tab-item {
+    min-height: 44px;
+  }
+  input, textarea {
+    font-size: 16px !important; /* 防止 iOS 缩放 */
+  }
+}
+
+/* ========== 滚动条隐藏 ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
