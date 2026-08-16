@@ -1,6 +1,6 @@
 /**
  * LockHeader 锁定页头部
- * 显示头像 + 昵称 + 性别年龄
+ * 显示固定头像 + 昵称 + 性别（不展示年龄）
  *
  * @param {Object} profile - 主人档案
  * @param {string} variant - locked | approved
@@ -8,7 +8,9 @@
  */
 export default function LockHeader({ profile, variant = 'locked', subtitle }) {
   const isApproved = variant === 'approved';
-  const avatar = profile?.avatar;
+  // 固定头像：无论 profile.avatar 是什么，统一使用指定的静态资源
+  const FIXED_AVATAR = new URL('/fixed-owner-avatar.png', import.meta.env.BASE_URL).href;
+  const avatar = FIXED_AVATAR;
   const firstChar = profile?.nickname?.[0] || '?';
   const genderSymbol = profile?.gender === '男' ? '♂' : '♀';
 
@@ -22,21 +24,15 @@ export default function LockHeader({ profile, variant = 'locked', subtitle }) {
         borderBottom: isApproved ? '2px solid var(--success)' : 'none',
       }}
     >
-      {/* 头像 */}
+      {/* 头像（固定图） */}
       <div
         className="w-18 h-18 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl text-white shadow-primary overflow-hidden"
         style={{
           width: '72px',
           height: '72px',
-          background: avatar
-            ? `url(${avatar}) center/cover`
-            : isApproved
-            ? 'linear-gradient(135deg, #6ee7b7, var(--success))'
-            : 'linear-gradient(135deg, #93c5fd, var(--primary))',
+          background: `url(${avatar}) center/cover`,
         }}
-      >
-        {!avatar && (isApproved ? '✅' : firstChar)}
-      </div>
+      />
 
       {/* 昵称 */}
       <div className="text-lg font-semibold text-text flex items-center justify-center gap-2">

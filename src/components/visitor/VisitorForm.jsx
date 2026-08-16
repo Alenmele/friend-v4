@@ -62,7 +62,58 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
   };
 
   /**
-   * 校验是否为微信号二维码截图（简易校验：检查图片大小比例接近正方形、文件类型正确）
+   * 仅缩放二维码图片（保留 PNG 透明/WebP，不强制 JPEG 白背景，不破坏二维码识别）
+   */
+  const compressQrImage = async (file, options = {}) => {
+    const { maxSize = 1024, quality = 0.92 } = options;
+    const img = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => reject(new Error('二维码图片加载失败'));
+        im.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('二维码图片读取失败'));
+      reader.readAsDataURL(file);
+    });
+    let { width, height } = img;
+    if (width > height && width > maxSize) {
+      height = Math.round((height * maxSize) / width);
+      width = maxSize;
+    } else if (height > maxSize) {
+      width = Math.round((width * maxSize) / height);
+      height = maxSize;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    // 透明保留：不填充白背景（png/webp 保持透明）
+    ctx.drawImage(img, 0, 0, width, height);
+    const mimeType =
+      file.type === 'image/png' ? 'image/png' :
+      file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+    if (mimeType === 'image/jpeg') {
+      // JPEG 无透明通道，需先填充白背景再画，避免黑色底
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+    }
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('二维码图片处理失败'));
+        },
+        mimeType,
+        quality
+      );
+    });
+  };
+
+  /**
+   * 校验是否为微信号二维码截图（比例放宽：手机全屏微信截图通常为 9:16 ≈ 1.78）
    */
   const validateQrImage = (file) => {
     return new Promise((resolve, reject) => {
@@ -79,13 +130,13 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
         const img = new Image();
         img.onload = () => {
           const { width, height } = img;
-          // 二维码必须是正方形或接近正方形（比例 0.7-1.4）
+          // 放宽比例到 0.5-2.0，兼容 9:16/16:9 手机截图带微信导航栏
           const ratio = Math.max(width, height) / Math.min(width, height);
-          if (ratio > 1.4) {
-            reject(new Error('二维码图片比例不正确，请上传标准的微信二维码截图（接近正方形）'));
+          if (ratio > 2.0) {
+            reject(new Error('二维码图片比例异常，请裁剪后重新上传'));
             return;
           }
-          // 最小分辨率校验
+          // 最小分辨率
           if (width < 200 || height < 200) {
             reject(new Error('二维码图片太小，请上传清晰的微信二维码截图'));
             return;
@@ -110,16 +161,18 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
     setQrUploading(true);
     try {
       await validateQrImage(file);
-      // 压缩图片
-      const compressedBlob = await compressImage(file, { maxSize: 1024, quality: 0.9 });
-      const ext = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
+      // 二维码专用压缩：保留 PNG/WebP 透明，不强制 JPEG 白背景
+      const compressedBlob = await compressQrImage(file, { maxSize: 1024, quality: 0.92 });
+      const ext =
+        file.type === 'image/png' ? '.png' :
+        file.type === 'image/webp' ? '.webp' : '.jpg';
       const filename = 'wechat_qr_' + generateFilename(ext);
       const compressedFile = blobToFile(compressedBlob, filename);
       if (!ownerProfile || !visitorToken) throw new Error('上下文缺失');
       const path = `${ownerProfile.id}/${visitorToken}/${filename}`;
       const { error } = await supabase.storage
         .from(BUCKETS.VISITOR_PHOTOS)
-        .upload(path, compressedFile, { cacheControl: '3600', upsert: false });
+        .upload(path, compressedFile, { cacheControl: '3600', upsert: true });
       if (error) throw error;
       const { data } = supabase.storage
         .from(BUCKETS.VISITOR_PHOTOS)
