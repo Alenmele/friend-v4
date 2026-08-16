@@ -79,6 +79,8 @@ export default function OwnerProfileEdit({ onSaved }) {
 
     setSaving(true);
     try {
+      // 头像统一使用第二张照片（若存在），没有第二张则回退到第一张
+      const avatarPic = form.photos[1] || form.photos[0] || null;
       const updateData = {
         nickname: form.nickname.trim(),
         gender: form.gender,
@@ -87,33 +89,20 @@ export default function OwnerProfileEdit({ onSaved }) {
         bio: form.bio.trim(),
         expectation: form.expectation.trim(),
         photos: form.photos,
-        avatar: form.photos[0] || null,
+        avatar: avatarPic,
         updated_at: new Date().toISOString(),
       };
 
-      // 方式1：直接更新（RLS 策略允许）
-      let { error } = await supabase
+      // 直接更新（RLS 策略已授权 authenticated 用户可更新自己的行）
+      const { error } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', user.id);
 
-      // 方式2：如果直接更新失败，尝试 RPC 函数
       if (error) {
-        console.warn('直接更新失败，尝试 RPC:', error.message);
-        const { error: rpcError } = await supabase.rpc('update_owner_profile', {
-          p_nickname: form.nickname.trim(),
-          p_gender: form.gender,
-          p_age: Number(form.age),
-          p_wechat: form.wechat.trim(),
-          p_bio: form.bio.trim(),
-          p_expectation: form.expectation.trim(),
-          p_photos: form.photos,
-          p_avatar: form.photos[0] || null,
-        });
-        error = rpcError;
+        console.error('[profiles.update] 方式1直接更新失败:', JSON.stringify(error));
+        throw error;
       }
-
-      if (error) throw error;
 
       // 首次保存：生成 link_id
       if (!profile?.link_id) {
@@ -128,9 +117,8 @@ export default function OwnerProfileEdit({ onSaved }) {
       onSaved?.();
     } catch (err) {
       console.error('保存失败:', err);
-      // 显示真实错误信息，方便排查
       const errMsg = err?.message || err?.error || String(err);
-      showToast('保存失败：' + errMsg, 'error', 5000);
+      showToast('保存失败：' + errMsg, 'error', 6000);
     } finally {
       setSaving(false);
     }
@@ -207,7 +195,7 @@ export default function OwnerProfileEdit({ onSaved }) {
       <div className="field mb-4">
         <div className="field-label text-sm font-medium text-text mb-1.5">
           个人照片（1-3张） <span className="text-danger ml-0.5">*</span>
-          <span className="text-xs text-text-light ml-2">首张将作为头像</span>
+          <span className="text-xs text-text-light ml-2">第二张作为头像（推荐）</span>
         </div>
         <PhotoGrid
           value={form.photos}

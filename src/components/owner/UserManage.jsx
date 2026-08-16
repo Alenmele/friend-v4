@@ -48,7 +48,7 @@ export default function UserManage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  // 新增用户
+  // 新增用户：通过 admin_create_user RPC 免邮件创建（不切换会话）
   const handleAddUser = async () => {
     // 校验邮箱
     const emailTrimmed = newEmail.trim();
@@ -73,63 +73,21 @@ export default function UserManage() {
     setEmailError('');
 
     try {
-      // 保存当前管理员的会话
-      const { data: { session: adminSession } } = await supabase.auth.getSession();
-      const adminAccessToken = adminSession?.access_token;
-      const adminRefreshToken = adminSession?.refresh_token;
-
-      if (!adminAccessToken || !adminRefreshToken) {
-        throw new Error('无法获取当前会话，请重新登录');
-      }
-
-      // 调用 signUp 创建新用户（会切换到新用户会话）
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: emailTrimmed,
-        password: 'Aa123456',
-        options: {
-          data: {
-            nickname: newNickname.trim() || '新用户',
-          },
-        },
+      const { data, error } = await supabase.rpc('admin_create_user', {
+        p_email: emailTrimmed,
+        p_nickname: newNickname.trim() || '新用户',
       });
-
-      if (signUpError) throw signUpError;
-
-      // 设置邮箱为已确认（通过 RPC 或直接在新用户记录上设置）
-      // 注意：signUp 后会自动创建 profiles 记录（通过触发器）
-
-      // 立即登出新用户
-      await supabase.auth.signOut();
-
-      // 恢复管理员会话
-      const { error: restoreError } = await supabase.auth.setSession({
-        access_token: adminAccessToken,
-        refresh_token: adminRefreshToken,
-      });
-
-      if (restoreError) {
-        console.error('恢复管理员会话失败:', restoreError.message);
-        showToast('用户已创建，但管理员会话已失效，请重新登录', 'error');
-        return;
-      }
+      if (error) throw error;
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');
       setShowAddModal(false);
       setNewEmail('');
       setNewNickname('');
       fetchUsers();
+      refreshProfile?.();
     } catch (err) {
       console.error('创建用户失败:', err.message);
       showToast(getErrorMessage(err), 'error');
-      // 尝试恢复管理员会话
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          showToast('管理员会话已失效，请重新登录', 'error');
-        }
-      } catch (e) {
-        // 忽略
-      }
     } finally {
       setAdding(false);
     }
@@ -207,7 +165,8 @@ export default function UserManage() {
                   {u.email}
                 </div>
                 <div className="text-[11px] text-text-light mt-0.5">
-                  {u.gender} · {u.age}岁 · {u.wechat || '未填微信号'}
+                  {u.gender || '未设置'} · {u.wechat || '未填微信号'}
+                  {u.is_admin && <span className="ml-1.5 text-primary">· 管理员</span>}
                 </div>
               </div>
               <div className="flex gap-1.5 ml-2 flex-shrink-0">

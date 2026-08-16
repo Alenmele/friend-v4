@@ -46,9 +46,9 @@ export default function LockHeader({ profile, variant = 'locked', subtitle }) {
         )}
       </div>
 
-      {/* 性别年龄 */}
+      {/* 性别（不显示年龄） */}
       <div className="inline-block mt-1 text-xs text-primary bg-primary-light px-3.5 py-1 rounded-full">
-        {genderSymbol} {profile?.gender} · {profile?.age}岁
+        {genderSymbol} {profile?.gender}
       </div>
 
       {/* 副标题 */}

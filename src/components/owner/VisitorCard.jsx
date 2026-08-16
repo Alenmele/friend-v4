@@ -104,12 +104,24 @@ export default function VisitorCard({ visitor, onAction }) {
         <div>
           <div className="text-[17px] font-medium text-text">{visitor.nickname}</div>
           <div className="text-xs text-text-secondary mt-1">
-            {visitor.gender === '男' ? '♂' : '♀'} {visitor.gender} · {visitor.wechat} ·{' '}
+            {visitor.gender === '男' ? '♂' : '♀'} {visitor.gender} ·{' '}
             {formatTime(visitor.created_at)}
           </div>
         </div>
         <Tag status={visitor.status} />
       </div>
+
+      {/* 微信号二维码（访客） */}
+      {visitor.wechat_qr && (
+        <div className="my-2.5 bg-primary-light rounded-xl p-3 border border-primary-light">
+          <div className="text-xs text-primary font-medium mb-2">📱 微信号二维码（审核通过后加好友）</div>
+          <img
+            src={visitor.wechat_qr}
+            alt="微信号二维码"
+            className="w-32 h-32 rounded-lg object-cover mx-auto shadow-sm bg-white"
+          />
+        </div>
+      )}
 
       {/* 自我介绍 */}
       {visitor.bio && (

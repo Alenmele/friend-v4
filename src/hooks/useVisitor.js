@@ -15,6 +15,7 @@ export function useVisitor(linkId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [scenario, setScenario] = useState('loading'); // loading | locked | pending | approved | rejected | revoked | link_closed | invalid_link | self_visit
+  const [submitting, setSubmitting] = useState(false); // 提交并发锁
 
   const visitorToken = storage.getOrCreateVisitorToken();
 
@@ -95,21 +96,28 @@ export function useVisitor(linkId) {
   }, [fetchData]);
 
   /**
-   * 提交访客申请
+   * 提交访客申请（加并发锁，防止重复提交）
    */
   const submitApplication = async (formData) => {
-    if (!ownerProfile) throw new Error('主人档案未加载');
+    if (!ownerProfile) return { success: false, error: '主人档案未加载' };
+    if (submitting) return { success: false, error: '正在提交中，请稍候' };
+    setSubmitting(true);
     try {
-      // 调用 RPC
+      // 调用 RPC（参数与后端对齐：不含 p_age，含 p_bio/p_expectation/p_photos）
+      // 头像统一用第二张照片（若存在）
+      const p_photos = formData.photos || [];
+      const p_avatar = p_photos[1] || p_photos[0] || null;
       const { data, error } = await supabase.rpc('submit_visitor_application', {
         p_owner_id: ownerProfile.id,
         p_visitor_token: visitorToken,
         p_nickname: formData.nickname,
         p_gender: formData.gender,
-        p_wechat: formData.wechat,
+        p_wechat: formData.wechat || '扫码加好友',
+        p_wechat_qr: formData.wechat_qr || '',
         p_bio: formData.bio || '',
         p_expectation: formData.expectation || '',
-        p_photos: formData.photos || [],
+        p_photos: p_photos,
+        p_avatar: p_avatar,
       });
       if (error) throw error;
 
@@ -121,6 +129,8 @@ export function useVisitor(linkId) {
     } catch (err) {
       console.error('提交申请失败:', err.message);
       return { success: false, error: getErrorMessage(err) };
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -131,6 +141,7 @@ export function useVisitor(linkId) {
     loading,
     error,
     scenario,
+    submitting,
     refresh: fetchData,
     submitApplication,
   };

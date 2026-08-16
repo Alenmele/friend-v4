@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && gh-pages -d dist"
+    "deploy": "vite build && node --eval \"const gh=require('gh-pages');gh.publish('./dist',{dotfiles:true,message:'deploy'},e=>{if(e){console.error(e);process.exit(1)}console.log('deployed')})\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

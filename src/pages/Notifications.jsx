@@ -25,7 +25,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (signal) => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -41,8 +41,9 @@ export default function Notifications() {
         query = query.eq('type', 'system');
       }
 
-      const { data, error } = await query.limit(100);
+      const { data, error } = await query.limit(100).abortSignal(signal);
       if (error) throw error;
+      if (signal?.aborted) return;
       setNotifications(data || []);
 
       // 统计未读
@@ -50,17 +51,22 @@ export default function Notifications() {
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('is_read', false);
+        .eq('is_read', false)
+        .abortSignal(signal);
+      if (signal?.aborted) return;
       setUnreadCount(count || 0);
     } catch (err) {
+      if (err?.name === 'AbortError' || (typeof err?.message === 'string' && err.message.includes('Abort'))) return;
       console.error('通知查询失败:', err.message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [user?.id, filter]);
 
   useEffect(() => {
-    fetchNotifications();
+    const controller = new AbortController();
+    fetchNotifications(controller.signal);
+    return () => controller.abort();
   }, [fetchNotifications]);
 
   // 全部已读

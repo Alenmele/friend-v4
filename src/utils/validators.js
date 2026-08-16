@@ -38,7 +38,7 @@ export function validateAge(age) {
 }
 
 /**
- * 校验微信号
+ * 校验微信号（用于主人资料）
  * 规则：6-20 位，字母开头，允许字母数字下划线减号
  */
 export function validateWechat(wechat) {
@@ -49,6 +49,18 @@ export function validateWechat(wechat) {
   if (!/^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/.test(trimmed)) {
     return '微信号需以字母开头，仅支持字母数字下划线减号';
   }
+  return null;
+}
+
+/**
+ * 校验微信号二维码截图（用于访客申请）
+ * 规则：必须是非空 URL
+ */
+export function validateWechatQr(qrUrl) {
+  if (!qrUrl || typeof qrUrl !== 'string') return '请上传微信号二维码截图';
+  const trimmed = qrUrl.trim();
+  if (trimmed.length === 0) return '请上传微信号二维码截图';
+  if (!/^https?:\/\//i.test(trimmed)) return '二维码图片上传失败，请重试';
   return null;
 }
 
@@ -120,7 +132,7 @@ export function validatePassword(password) {
 }
 
 /**
- * 校验访客表单（6 项必填）
+ * 校验访客表单（6 项必填 + 微信号二维码）
  */
 export function validateVisitorForm(form) {
   const errors = {};
@@ -128,8 +140,11 @@ export function validateVisitorForm(form) {
   if (e1) errors.nickname = e1;
   const e2 = validateGender(form.gender);
   if (e2) errors.gender = e2;
-  const e3 = validateWechat(form.wechat);
-  if (e3) errors.wechat = e3;
+  // 访客用 wechat_qr（二维码截图）
+  const e3 = validateWechatQr(form.wechat_qr);
+  if (e3) errors.wechat_qr = e3;
+  // 兼容老字段，避免后端报错
+  if (!form.wechat) form.wechat = '扫码加好友';
   const e4 = validateBio(form.bio);
   if (e4) errors.bio = e4;
   const e5 = validateExpectation(form.expectation);

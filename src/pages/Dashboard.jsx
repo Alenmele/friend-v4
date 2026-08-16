@@ -22,14 +22,15 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, loading, signOut, refreshProfile } = useAuth();
   const { showToast } = useToast();
-  const [tab, setTab] = useState(searchParams.get('tab') === 'visitors' ? 'visitors' : 'profile');
+  const initialTab = searchParams.get('tab');
+  const [tab, setTab] = useState(['visitors', 'users', 'profile'].includes(initialTab) ? initialTab : 'profile');
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, revoked: 0 });
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Tab 切换同步 URL
   const handleTabChange = (newTab) => {
     setTab(newTab);
-    setSearchParams(newTab === 'visitors' ? { tab: 'visitors' } : {});
+    setSearchParams(newTab === 'profile' ? {} : { tab: newTab });
   };
 
   // 拉取访客统计

@@ -23,3 +23,9 @@ pnpm-debug.log*
 
 # 系统
 Thumbs.db
+
+# 敏感凭证（含 GitHub PAT，禁止提交）
+.gh_token
+deploy-api.ps1
+push-main.ps1
+make-photo.ps1

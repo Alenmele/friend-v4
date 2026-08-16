@@ -94,59 +94,17 @@ export default function DangerZone({ onCleared, onDeleted }) {
   };
 
   /**
-   * 注销账户
+   * 注销账户：通过 admin_delete_user RPC 允许删除自己（会级联清理 auth.users + storage + profiles + visitors + notifications）
    */
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
     setDeleting(true);
     try {
-      // 1. 删除 storage（主人照片 + 头像）
-      const ownerFolder = `${user.id}`;
-      const { data: ownerFiles } = await supabase.storage
-        .from(BUCKETS.OWNER_PHOTOS)
-        .list(ownerFolder);
-      if (ownerFiles?.length > 0) {
-        await supabase.storage
-          .from(BUCKETS.OWNER_PHOTOS)
-          .remove(ownerFiles.map((f) => `${ownerFolder}/${f.name}`));
-      }
-      const { data: avatarFiles } = await supabase.storage
-        .from(BUCKETS.AVATARS)
-        .list(ownerFolder);
-      if (avatarFiles?.length > 0) {
-        await supabase.storage
-          .from(BUCKETS.AVATARS)
-          .remove(avatarFiles.map((f) => `${ownerFolder}/${f.name}`));
-      }
+      const { error } = await supabase.rpc('admin_delete_user', {
+        p_user_id: user.id,
+      });
+      if (error) throw error;
 
-      // 2. 删除访客的照片
-      const { data: visitors } = await supabase
-        .from('visitors')
-        .select('visitor_token')
-        .eq('owner_id', user.id);
-      if (visitors?.length > 0) {
-        for (const v of visitors) {
-          const folderPath = `${user.id}/${v.visitor_token}`;
-          const { data: files } = await supabase.storage
-            .from(BUCKETS.VISITOR_PHOTOS)
-            .list(folderPath);
-          if (files?.length > 0) {
-            await supabase.storage
-              .from(BUCKETS.VISITOR_PHOTOS)
-              .remove(files.map((f) => `${folderPath}/${f.name}`));
-          }
-        }
-      }
-
-      // 3. 删除 profile（级联删除 visitors + notifications）
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id);
-      if (profileErr) throw profileErr;
-
-      // 4. 删除 auth.users（需要 service_role，前端只能调用 RPC 或提示用户在控制台删除）
-      // 实际项目中需通过 Edge Function 实现，这里降级提示
       await signOut();
       showToast('🗑️ 账户已注销', 'success');
       setShowDeleteModal(false);

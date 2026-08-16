@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../common/Navbar.jsx';
 import Input from '../common/Input.jsx';
@@ -11,7 +11,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useDraft } from '../../hooks/useDraft.js';
 import { validateVisitorForm } from '../../utils/validators.js';
 import { supabase, BUCKETS } from '../../api/supabase.js';
-import { generateFilename } from '../../utils/imageCompress.js';
+import { compressImage, generateFilename, blobToFile } from '../../utils/imageCompress.js';
 import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
@@ -23,11 +23,14 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [qrUploading, setQrUploading] = useState(false);
+  const qrFileRef = useRef(null);
 
   const initialForm = {
     nickname: '',
     gender: '男',
     wechat: '',
+    wechat_qr: '', // 微信号二维码截图URL
     bio: '',
     expectation: '',
     photos: [],
@@ -56,6 +59,87 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
       .from(BUCKETS.VISITOR_PHOTOS)
       .getPublicUrl(path);
     return data.publicUrl;
+  };
+
+  /**
+   * 校验是否为微信号二维码截图（简易校验：检查图片大小比例接近正方形、文件类型正确）
+   */
+  const validateQrImage = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('请上传图片格式的二维码'));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        reject(new Error('二维码图片不能超过 5MB'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const { width, height } = img;
+          // 二维码必须是正方形或接近正方形（比例 0.7-1.4）
+          const ratio = Math.max(width, height) / Math.min(width, height);
+          if (ratio > 1.4) {
+            reject(new Error('二维码图片比例不正确，请上传标准的微信二维码截图（接近正方形）'));
+            return;
+          }
+          // 最小分辨率校验
+          if (width < 200 || height < 200) {
+            reject(new Error('二维码图片太小，请上传清晰的微信二维码截图'));
+            return;
+          }
+          resolve({ width, height });
+        };
+        img.onerror = () => reject(new Error('图片损坏，无法识别，请重新上传'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('图片读取失败，请重试'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  /**
+   * 上传微信号二维码截图
+   */
+  const handleQrUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setQrUploading(true);
+    try {
+      await validateQrImage(file);
+      // 压缩图片
+      const compressedBlob = await compressImage(file, { maxSize: 1024, quality: 0.9 });
+      const ext = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
+      const filename = 'wechat_qr_' + generateFilename(ext);
+      const compressedFile = blobToFile(compressedBlob, filename);
+      if (!ownerProfile || !visitorToken) throw new Error('上下文缺失');
+      const path = `${ownerProfile.id}/${visitorToken}/${filename}`;
+      const { error } = await supabase.storage
+        .from(BUCKETS.VISITOR_PHOTOS)
+        .upload(path, compressedFile, { cacheControl: '3600', upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage
+        .from(BUCKETS.VISITOR_PHOTOS)
+        .getPublicUrl(path);
+      updateField('wechat_qr', data.publicUrl);
+      setErrors((prev) => { const n = { ...prev }; delete n.wechat_qr; return n; });
+      showToast('✅ 二维码上传成功', 'success');
+    } catch (err) {
+      console.error('二维码上传失败:', err);
+      showToast(getErrorMessage(err) || err.message || '二维码上传失败，请重试', 'error');
+    } finally {
+      setQrUploading(false);
+    }
+  };
+
+  /**
+   * 删除二维码
+   */
+  const handleRemoveQr = () => {
+    updateField('wechat_qr', '');
   };
 
   /**
@@ -142,15 +226,59 @@ export default function VisitorForm({ ownerProfile, visitorToken, onSubmit, onCa
         )}
       </div>
 
-      <Input
-        label="微信号"
-        required
-        placeholder="请输入你的微信号"
-        value={form.wechat}
-        onChange={(e) => updateField('wechat', e.target.value)}
-        error={errors.wechat}
-        maxLength={20}
-      />
+      {/* 微信号二维码截图上传 */}
+      <div className="field mb-4">
+        <div className="field-label text-sm font-medium text-text mb-1.5">
+          微信号二维码截图 <span className="text-danger ml-0.5">*</span>
+          <span className="text-xs text-text-light ml-2">上传微信二维码，方便主人加你好友</span>
+        </div>
+        {form.wechat_qr ? (
+          <div className="relative inline-block">
+            <img
+              src={form.wechat_qr}
+              alt="微信号二维码"
+              className="w-40 h-40 rounded-lg object-cover border border-border shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveQr}
+              className="absolute -top-2 -right-2 w-7 h-7 bg-danger text-white rounded-full text-sm leading-none flex items-center justify-center shadow"
+              title="删除二维码"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <label className="block">
+            <input
+              ref={qrFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleQrUpload}
+            />
+            <div
+              className="w-40 h-40 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-light cursor-pointer hover:border-primary hover:bg-primary-light transition"
+              onClick={() => qrFileRef.current?.click()}
+            >
+              {qrUploading ? (
+                <>
+                  <div className="text-2xl mb-1">⏳</div>
+                  <div className="text-xs">上传中...</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-3xl mb-1">📱</div>
+                  <div className="text-xs">点击上传二维码</div>
+                </>
+              )}
+            </div>
+          </label>
+        )}
+        {errors.wechat_qr && (
+          <div className="text-danger text-xs mt-1.5 ml-1">{errors.wechat_qr}</div>
+        )}
+      </div>
 
       <Textarea
         label="自我介绍"
