@@ -9,7 +9,9 @@
 export default function LockHeader({ profile, variant = 'locked', subtitle }) {
   const isApproved = variant === 'approved';
   // 固定头像：无论 profile.avatar 是什么，统一使用指定的静态资源
-  const FIXED_AVATAR = new URL('/fixed-owner-avatar.png', import.meta.env.BASE_URL).href;
+  // 注意：BASE_URL 是相对路径（生产是 /friend-v4/），不能作为 new URL 的 base，必须字符串拼接
+  const BASE = import.meta.env.BASE_URL || '/';
+  const FIXED_AVATAR = BASE.replace(/\/$/, '') + '/fixed-owner-avatar.png';
   const avatar = FIXED_AVATAR;
   const firstChar = profile?.nickname?.[0] || '?';
   const genderSymbol = profile?.gender === '男' ? '♂' : '♀';
