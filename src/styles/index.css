@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -34,7 +34,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, system-ui, sans-serif;
   background: #ffffff;
   color: var(--text);
-  font-size: 14px;
+  font-size: 14px; /* v2 */
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -232,7 +232,7 @@ body {
   color: white;
   padding: 12px 20px;
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 14px; /* v2 */
   font-weight: 500;
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
   pointer-events: auto;
