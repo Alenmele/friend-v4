@@ -41,12 +41,24 @@ export default function VisitorPage() {
 
   // 表单视图
   if (view === 'form' && ownerProfile) {
+    // 从已有访客记录预填表单（二次修改场景）
+    const initialData = visitorRecord ? {
+      nickname: visitorRecord.nickname || '',
+      gender: visitorRecord.gender || '',
+      wechat: visitorRecord.wechat || '',
+      wechat_qr: visitorRecord.wechat_qr || '',
+      bio: visitorRecord.bio || '',
+      expectation: visitorRecord.expectation || '',
+      photos: visitorRecord.photos || [],
+    } : null;
+
     return (
       <div className="app-wrapper">
         <div className="bg-surface rounded-card shadow-card border border-border overflow-hidden">
           <VisitorForm
             ownerProfile={ownerProfile}
             visitorToken={visitorToken}
+            initialData={initialData}
             onSubmit={async (formData) => {
               const result = await submitApplication(formData);
               if (result?.success) {

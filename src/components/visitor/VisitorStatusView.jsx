@@ -161,6 +161,10 @@ export default function VisitorStatusView({
           </CardValue>
         </Card>
 
+        <Button variant="outline" onClick={onApply} className="mt-4">
+          ✏️ 修改我的资料
+        </Button>
+
         <SafetyTip />
       </div>
     );

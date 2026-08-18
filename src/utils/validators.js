@@ -145,13 +145,19 @@ export function validatePassword(password) {
 
 /**
  * 校验访客表单（昵称+性别+微信号+二维码+自我介绍+交友期许+照片）
+ * @param {object} form - 表单数据
+ * @param {string} ownerGender - 主人性别，用于同性校验（可选）
  */
-export function validateVisitorForm(form) {
+export function validateVisitorForm(form, ownerGender) {
   const errors = {};
   const e1 = validateNickname(form.nickname);
   if (e1) errors.nickname = e1;
   const e2 = validateGender(form.gender);
   if (e2) errors.gender = e2;
+  // 同性校验：主人性别和访客性别不能相同
+  if (ownerGender && form.gender === ownerGender) {
+    errors.gender = '对方只接受异性交友';
+  }
   // 访客微信号文本
   const eWechat = validateVisitorWechat(form.wechat);
   if (eWechat) errors.wechat = eWechat;
