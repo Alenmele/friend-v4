@@ -112,7 +112,7 @@ export function useVisitor(linkId) {
         p_visitor_token: visitorToken,
         p_nickname: formData.nickname,
         p_gender: formData.gender,
-        p_wechat: formData.wechat || '扫码加好友',
+        p_wechat: formData.wechat || '',
         p_wechat_qr: formData.wechat_qr || '',
         p_bio: formData.bio || '',
         p_expectation: formData.expectation || '',

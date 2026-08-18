@@ -4,6 +4,7 @@ import Textarea from '../common/Textarea.jsx';
 import RadioGroup from '../common/RadioGroup.jsx';
 import PhotoGrid from '../common/PhotoGrid.jsx';
 import Button from '../common/Button.jsx';
+import ImageModal from '../common/ImageModal.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { supabase, BUCKETS } from '../../api/supabase.js';
@@ -29,6 +30,7 @@ export default function OwnerProfileEdit({ onSaved }) {
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [imageModal, setImageModal] = useState({ open: false, index: 0 });
 
   // 初始化表单
   useEffect(() => {
@@ -202,6 +204,7 @@ export default function OwnerProfileEdit({ onSaved }) {
           onChange={(urls) => updateField('photos', urls)}
           maxCount={3}
           onUpload={handleUploadPhoto}
+          onPhotoClick={(i) => setImageModal({ open: true, index: i })}
         />
         {errors.photos && (
           <div className="text-danger text-xs mt-1 ml-4">{errors.photos}</div>
@@ -211,6 +214,15 @@ export default function OwnerProfileEdit({ onSaved }) {
       <Button variant="primary" loading={saving} onClick={handleSave}>
         💾 保存资料
       </Button>
+
+      {/* 图片放大查看 */}
+      <ImageModal
+        open={imageModal.open}
+        images={form.photos || []}
+        index={imageModal.index}
+        onClose={() => setImageModal({ open: false, index: 0 })}
+        onIndexChange={(i) => setImageModal({ open: true, index: i })}
+      />
     </>
   );
 }

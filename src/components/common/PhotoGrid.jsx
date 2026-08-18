@@ -20,6 +20,7 @@ export default function PhotoGrid({
   maxCount = 3,
   locked = false,
   onUpload,
+  onPhotoClick,
 }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -99,7 +100,12 @@ export default function PhotoGrid({
             key={i}
             className="aspect-square rounded-2xl border border-border overflow-hidden relative group bg-surface-muted"
           >
-            <img src={url} alt={`照片${i + 1}`} className="w-full h-full object-cover" />
+            <img
+              src={url}
+              alt={`照片${i + 1}`}
+              className={`w-full h-full object-cover ${onPhotoClick ? 'cursor-zoom-in' : ''}`}
+              onClick={onPhotoClick ? () => onPhotoClick(i) : undefined}
+            />
             {!locked && (
               <button
                 type="button"

@@ -53,6 +53,18 @@ export function validateWechat(wechat) {
 }
 
 /**
+ * 校验访客微信号文本（用于访客申请）
+ * 规则：非空，2-30 位
+ */
+export function validateVisitorWechat(wechat) {
+  if (!wechat || typeof wechat !== 'string') return '微信号不能为空';
+  const trimmed = wechat.trim();
+  if (trimmed.length < 2) return '微信号至少 2 位';
+  if (trimmed.length > 30) return '微信号不能超过 30 位';
+  return null;
+}
+
+/**
  * 校验微信号二维码截图（用于访客申请）
  * 规则：必须是非空 URL
  */
@@ -132,7 +144,7 @@ export function validatePassword(password) {
 }
 
 /**
- * 校验访客表单（6 项必填 + 微信号二维码）
+ * 校验访客表单（昵称+性别+微信号+二维码+自我介绍+交友期许+照片）
  */
 export function validateVisitorForm(form) {
   const errors = {};
@@ -140,11 +152,12 @@ export function validateVisitorForm(form) {
   if (e1) errors.nickname = e1;
   const e2 = validateGender(form.gender);
   if (e2) errors.gender = e2;
-  // 访客用 wechat_qr（二维码截图）
+  // 访客微信号文本
+  const eWechat = validateVisitorWechat(form.wechat);
+  if (eWechat) errors.wechat = eWechat;
+  // 访客微信号二维码截图
   const e3 = validateWechatQr(form.wechat_qr);
   if (e3) errors.wechat_qr = e3;
-  // 兼容老字段，避免后端报错
-  if (!form.wechat) form.wechat = '扫码加好友';
   const e4 = validateBio(form.bio);
   if (e4) errors.bio = e4;
   const e5 = validateExpectation(form.expectation);

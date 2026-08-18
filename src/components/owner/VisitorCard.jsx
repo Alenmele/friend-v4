@@ -4,6 +4,7 @@ import Tag from '../common/Tag.jsx';
 import Button from '../common/Button.jsx';
 import Modal from '../common/Modal.jsx';
 import PhotoGrid from '../common/PhotoGrid.jsx';
+import ImageModal from '../common/ImageModal.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { supabase } from '../../api/supabase.js';
 import { getErrorMessage } from '../../utils/errorMap.js';
@@ -20,6 +21,7 @@ export default function VisitorCard({ visitor, onAction }) {
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [allowReapply, setAllowReapply] = useState(true);
   const [acting, setActing] = useState(false);
+  const [imageModal, setImageModal] = useState({ open: false, index: 0 });
 
   const handleApprove = async () => {
     setActing(true);
@@ -111,15 +113,23 @@ export default function VisitorCard({ visitor, onAction }) {
         <Tag status={visitor.status} />
       </div>
 
-      {/* 微信号二维码（访客） */}
-      {visitor.wechat_qr && (
+      {/* 微信号 + 二维码 */}
+      {(visitor.wechat || visitor.wechat_qr) && (
         <div className="my-2.5 bg-primary-light rounded-xl p-3 border border-primary-light">
-          <div className="text-xs text-primary font-medium mb-2">📱 微信号二维码（审核通过后加好友）</div>
-          <img
-            src={visitor.wechat_qr}
-            alt="微信号二维码"
-            className="w-32 h-32 rounded-lg object-cover mx-auto shadow-sm bg-white"
-          />
+          {visitor.wechat && (
+            <div className="text-xs text-primary font-medium mb-1.5">📱 微信号：{visitor.wechat}</div>
+          )}
+          {visitor.wechat_qr && (
+            <>
+              <div className="text-xs text-text-light mb-2">扫码加好友</div>
+              <img
+                src={visitor.wechat_qr}
+                alt="微信号二维码"
+                className="w-32 h-32 rounded-lg object-cover mx-auto shadow-sm bg-white cursor-zoom-in"
+                onClick={() => setImageModal({ open: true, index: 0 })}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -143,6 +153,7 @@ export default function VisitorCard({ visitor, onAction }) {
             value={visitor.photos}
             maxCount={3}
             locked={false}
+            onPhotoClick={(i) => setImageModal({ open: true, index: i })}
           />
         </div>
       )}
@@ -224,6 +235,15 @@ export default function VisitorCard({ visitor, onAction }) {
         loading={acting}
         onCancel={() => setShowRevokeModal(false)}
         onConfirm={handleRevoke}
+      />
+
+      {/* 图片放大查看 */}
+      <ImageModal
+        open={imageModal.open}
+        images={visitor.wechat_qr ? [visitor.wechat_qr, ...(visitor.photos || [])] : (visitor.photos || [])}
+        index={imageModal.index}
+        onClose={() => setImageModal({ open: false, index: 0 })}
+        onIndexChange={(i) => setImageModal({ open: true, index: i })}
       />
     </Card>
   );
