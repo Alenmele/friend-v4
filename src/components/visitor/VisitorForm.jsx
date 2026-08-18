@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsQR from 'jsqr';
 import Navbar from '../common/Navbar.jsx';
 import Input from '../common/Input.jsx';
 import Textarea from '../common/Textarea.jsx';
@@ -62,15 +63,75 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
   };
 
   /**
-   * 上传微信号二维码截图（仅校验格式+大小，不校验内容）
+   * 用 jsQR 简单校验是否为二维码（不校验内容是否为微信格式）
+   * 渐进策略：原图 → 1400 → 1024 → 768
+   */
+  const verifyQrCode = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('请上传图片格式'));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        reject(new Error('图片不能超过 5MB'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const scaleSteps = [null, 1400, 1024, 768];
+            let decoded = null;
+
+            for (const maxSize of scaleSteps) {
+              let { width, height } = img;
+              if (maxSize && (width > maxSize || height > maxSize)) {
+                if (width > height) {
+                  height = Math.round((height * maxSize) / width);
+                  width = maxSize;
+                } else {
+                  width = Math.round((width * maxSize) / height);
+                  height = maxSize;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(img, 0, 0, width, height);
+              const imageData = ctx.getImageData(0, 0, width, height);
+              decoded = jsQR(imageData.data, imageData.width, imageData.height);
+              if (decoded) break;
+            }
+
+            if (!decoded) {
+              reject(new Error('未检测到二维码，请确保图片清晰完整'));
+              return;
+            }
+            resolve();
+          } catch (err) {
+            reject(new Error(err.message || '图片损坏，无法识别'));
+          }
+        };
+        img.onerror = () => reject(new Error('图片加载失败'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  /**
+   * 上传微信号二维码截图（校验格式+大小+是否为二维码）
    */
   const handleQrUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setQrUploading(true);
     try {
-      if (!file.type.startsWith('image/')) throw new Error('请上传图片格式');
-      if (file.size > 5 * 1024 * 1024) throw new Error('图片不能超过 5MB');
+      await verifyQrCode(file);
 
       const compressedBlob = await compressImage(file, { maxSize: 1024, quality: 0.92 });
       const ext =
@@ -224,7 +285,7 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
             </button>
           </div>
         ) : (
-          <label className="block">
+          <div className="block">
             <input
               ref={qrFileRef}
               type="file"
@@ -234,7 +295,7 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
             />
             <div
               className="w-40 h-40 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-light cursor-pointer hover:border-primary hover:bg-primary-light transition"
-              onClick={() => qrFileRef.current?.click()}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); qrFileRef.current?.click(); }}
             >
               {qrUploading ? (
                 <>
@@ -248,7 +309,7 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
                 </>
               )}
             </div>
-          </label>
+          </div>
         )}
         {errors.wechat_qr && (
           <div className="text-danger text-xs mt-1.5 ml-1">{errors.wechat_qr}</div>
