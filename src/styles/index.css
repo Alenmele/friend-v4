@@ -40,22 +40,23 @@ body {
 }
 
 #root {
+  width: 100%;
   min-height: 100vh;
 }
 
 /* ========== 响应式布局适配 ========== */
-/* 基础：移动端适配 - 两侧留白 */
+/* 基础：移动端适配 - 全宽无留白 */
 .app-wrapper {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 16px 16px 40px;
+  max-width: 100%;
+  margin: 0;
+  padding: 16px 0 40px;
 }
 
 /* 小屏手机 (≤380px) */
 @media (max-width: 380px) {
   .app-wrapper {
     max-width: 100%;
-    padding: 10px 12px 32px;
+    padding: 10px 0 32px;
   }
 }
 
@@ -63,39 +64,39 @@ body {
 @media (min-width: 381px) and (max-width: 480px) {
   .app-wrapper {
     max-width: 100%;
-    padding: 14px 16px 36px;
+    padding: 14px 0 36px;
   }
 }
 
 /* 大屏手机 (481-768px) */
 @media (min-width: 481px) and (max-width: 768px) {
   .app-wrapper {
-    max-width: 520px;
-    padding: 24px 24px 40px;
+    max-width: 100%;
+    padding: 24px 0 40px;
   }
 }
 
 /* 平板 (769-1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
   .app-wrapper {
-    max-width: 680px;
-    padding: 32px 40px 48px;
+    max-width: 100%;
+    padding: 32px 0 48px;
   }
 }
 
 /* 大屏平板/小桌面 (1025-1280px) */
 @media (min-width: 1025px) and (max-width: 1280px) {
   .app-wrapper {
-    max-width: 760px;
-    padding: 40px 48px 56px;
+    max-width: 100%;
+    padding: 40px 0 56px;
   }
 }
 
 /* 桌面 (≥1281px) */
 @media (min-width: 1281px) {
   .app-wrapper {
-    max-width: 840px;
-    padding: 48px 56px 64px;
+    max-width: 100%;
+    padding: 48px 0 64px;
   }
 }
 

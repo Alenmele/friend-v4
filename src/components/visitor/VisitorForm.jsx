@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import jsQR from 'jsqr';
 import Navbar from '../common/Navbar.jsx';
 import Input from '../common/Input.jsx';
 import Textarea from '../common/Textarea.jsx';
@@ -63,147 +62,17 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
   };
 
   /**
-   * 缩放二维码图片（保留 PNG 透明/WebP，不强制 JPEG 白背景）
-   */
-  const compressQrImage = async (file, options = {}) => {
-    const { maxSize = 1024, quality = 0.92 } = options;
-    const img = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = () => reject(new Error('二维码图片加载失败'));
-        im.src = e.target.result;
-      };
-      reader.onerror = () => reject(new Error('二维码图片读取失败'));
-      reader.readAsDataURL(file);
-    });
-    let { width, height } = img;
-    if (width > height && width > maxSize) {
-      height = Math.round((height * maxSize) / width);
-      width = maxSize;
-    } else if (height > maxSize) {
-      width = Math.round((width * maxSize) / height);
-      height = maxSize;
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, width, height);
-    const mimeType =
-      file.type === 'image/png' ? 'image/png' :
-      file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
-    if (mimeType === 'image/jpeg') {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-    }
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('二维码图片处理失败'));
-        },
-        mimeType,
-        quality
-      );
-    });
-  };
-
-  /**
-   * 用 jsQR 解析二维码，校验是否为微信二维码
-   * 渐进策略：原图直接解析 → 失败依次缩放到 1400/1024/768 重试
-   * 严格阻断：非微信二维码直接拒绝
-   */
-  const verifyWechatQr = (file) => {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) {
-        reject(new Error('请上传图片格式'));
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        reject(new Error('图片不能超过 5MB'));
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            // 渐进解析：先原图，再逐步缩小
-            const scaleSteps = [null, 1400, 1024, 768];
-            let lastDecoded = null;
-            let lastError = null;
-
-            for (const maxSize of scaleSteps) {
-              let { width, height } = img;
-              if (maxSize && (width > maxSize || height > maxSize)) {
-                if (width > height) {
-                  height = Math.round((height * maxSize) / width);
-                  width = maxSize;
-                } else {
-                  width = Math.round((width * maxSize) / height);
-                  height = maxSize;
-                }
-              }
-
-              const canvas = document.createElement('canvas');
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.imageSmoothingEnabled = false;
-              ctx.drawImage(img, 0, 0, width, height);
-              const imageData = ctx.getImageData(0, 0, width, height);
-              const decoded = jsQR(imageData.data, imageData.width, imageData.height);
-
-              if (decoded) {
-                lastDecoded = decoded;
-                break;
-              }
-              lastError = null;
-            }
-
-            if (!lastDecoded) {
-              reject(new Error('请上传正确的微信二维码'));
-              return;
-            }
-            const text = lastDecoded.data || '';
-            const isWechat = text.includes('weixin.qq.com') || text.startsWith('weixin://') || text.includes('weixin');
-            if (!isWechat) {
-              reject(new Error('请上传正确的微信二维码'));
-              return;
-            }
-            resolve({ isWechatQr: true, decodedText: text });
-          } catch (err) {
-            reject(new Error(err.message || '图片损坏，无法识别'));
-          }
-        };
-        img.onerror = () => reject(new Error('图片损坏，无法识别'));
-        img.src = e.target.result;
-      };
-      reader.onerror = () => reject(new Error('图片读取失败'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  /**
-   * 上传微信号二维码截图（不限制尺寸，严格校验是否为微信二维码）
+   * 上传微信号二维码截图（仅校验格式+大小，不校验内容）
    */
   const handleQrUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setQrUploading(true);
     try {
-      // 校验格式和大小
       if (!file.type.startsWith('image/')) throw new Error('请上传图片格式');
       if (file.size > 5 * 1024 * 1024) throw new Error('图片不能超过 5MB');
 
-      // 用 jsQR 严格校验是否为微信二维码（不通过直接拒绝）
-      await verifyWechatQr(file);
-
-      // 缩放图片
-      const compressedBlob = await compressQrImage(file, { maxSize: 1024, quality: 0.92 });
+      const compressedBlob = await compressImage(file, { maxSize: 1024, quality: 0.92 });
       const ext =
         file.type === 'image/png' ? '.png' :
         file.type === 'image/webp' ? '.webp' : '.jpg';
@@ -220,9 +89,8 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
         .getPublicUrl(path);
       updateField('wechat_qr', data.publicUrl);
       setErrors((prev) => { const n = { ...prev }; delete n.wechat_qr; return n; });
-      // 成功后再清空 input，允许重新选择同一文件
       e.target.value = '';
-      showToast('✅ 微信二维码上传成功', 'success');
+      showToast('✅ 二维码上传成功', 'success');
     } catch (err) {
       console.error('二维码上传失败:', err);
       showToast(getErrorMessage(err) || err.message || '二维码上传失败，请重试', 'error');
