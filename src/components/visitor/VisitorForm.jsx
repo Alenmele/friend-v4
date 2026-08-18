@@ -113,7 +113,7 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
 
   /**
    * 用 jsQR 解析二维码，校验是否为微信二维码
-   * 先缩放到 1024px 再解析，避免大图性能问题
+   * 渐进策略：原图直接解析 → 失败依次缩放到 1400/1024/768 重试
    * 严格阻断：非微信二维码直接拒绝
    */
   const verifyWechatQr = (file) => {
@@ -130,36 +130,54 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          // 先缩放到 1024px 再解析，避免大图卡死
-          let { width, height } = img;
-          const maxSize = 1024;
-          if (width > height && width > maxSize) {
-            height = Math.round((height * maxSize) / width);
-            width = maxSize;
-          } else if (height > maxSize) {
-            width = Math.round((width * maxSize) / height);
-            height = maxSize;
+          try {
+            // 渐进解析：先原图，再逐步缩小
+            const scaleSteps = [null, 1400, 1024, 768];
+            let lastDecoded = null;
+            let lastError = null;
+
+            for (const maxSize of scaleSteps) {
+              let { width, height } = img;
+              if (maxSize && (width > maxSize || height > maxSize)) {
+                if (width > height) {
+                  height = Math.round((height * maxSize) / width);
+                  width = maxSize;
+                } else {
+                  width = Math.round((width * maxSize) / height);
+                  height = maxSize;
+                }
+              }
+
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(img, 0, 0, width, height);
+              const imageData = ctx.getImageData(0, 0, width, height);
+              const decoded = jsQR(imageData.data, imageData.width, imageData.height);
+
+              if (decoded) {
+                lastDecoded = decoded;
+                break;
+              }
+              lastError = null;
+            }
+
+            if (!lastDecoded) {
+              reject(new Error('请上传正确的微信二维码'));
+              return;
+            }
+            const text = lastDecoded.data || '';
+            const isWechat = text.includes('weixin.qq.com') || text.startsWith('weixin://') || text.includes('weixin');
+            if (!isWechat) {
+              reject(new Error('请上传正确的微信二维码'));
+              return;
+            }
+            resolve({ isWechatQr: true, decodedText: text });
+          } catch (err) {
+            reject(new Error(err.message || '图片损坏，无法识别'));
           }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          const imageData = ctx.getImageData(0, 0, width, height);
-          const decoded = jsQR(imageData.data, imageData.width, imageData.height);
-          if (!decoded) {
-            // 解析不出二维码 → 严格拒绝
-            reject(new Error('请上传正确的微信二维码'));
-            return;
-          }
-          const text = decoded.data || '';
-          const isWechat = text.includes('weixin.qq.com') || text.startsWith('weixin://') || text.includes('weixin');
-          if (!isWechat) {
-            // 解析出了二维码但不是微信二维码 → 拒绝
-            reject(new Error('请上传正确的微信二维码'));
-            return;
-          }
-          resolve({ isWechatQr: true, decodedText: text });
         };
         img.onerror = () => reject(new Error('图片损坏，无法识别'));
         img.src = e.target.result;
@@ -175,7 +193,6 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
   const handleQrUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = '';
     setQrUploading(true);
     try {
       // 校验格式和大小
@@ -203,6 +220,8 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
         .getPublicUrl(path);
       updateField('wechat_qr', data.publicUrl);
       setErrors((prev) => { const n = { ...prev }; delete n.wechat_qr; return n; });
+      // 成功后再清空 input，允许重新选择同一文件
+      e.target.value = '';
       showToast('✅ 微信二维码上传成功', 'success');
     } catch (err) {
       console.error('二维码上传失败:', err);

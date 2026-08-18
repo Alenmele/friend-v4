@@ -32,7 +32,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, system-ui, sans-serif;
-  background: var(--bg);
+  background: #ffffff;
   color: var(--text);
   font-size: 14px;
   line-height: 1.5;
