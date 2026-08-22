@@ -107,7 +107,7 @@ export default function VisitorForm({ ownerProfile, visitorToken, initialData, o
             }
 
             if (!decoded) {
-              reject(new Error('未检测到二维码，请确保图片清晰完整'));
+              reject(new Error('请到微信二维码用保存图片的方式，不要用截图'));
               return;
             }
             resolve();
