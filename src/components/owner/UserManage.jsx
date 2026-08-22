@@ -4,7 +4,7 @@ import Input from '../common/Input.jsx';
 import Modal from '../common/Modal.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { supabase } from '../../api/supabase.js';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../../api/supabase.js';
 import { getErrorMessage } from '../../utils/errorMap.js';
 
 /**
@@ -71,34 +71,30 @@ export default function UserManage() {
     setEmailError('');
 
     try {
-      const { data: { session: adminSession } } = await supabase.auth.getSession();
-      const adminAccessToken = adminSession?.access_token;
-      const adminRefreshToken = adminSession?.refresh_token;
-
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: emailTrimmed,
-        password: 'Aa123456',
-      });
-      if (signUpError) throw signUpError;
-
-      if (adminAccessToken && adminRefreshToken) {
-        await supabase.auth.setSession({
-          access_token: adminAccessToken,
-          refresh_token: adminRefreshToken,
-        });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('请先登录');
       }
 
-      const newUserId = signUpData.user?.id;
-      if (newUserId) {
-        const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: newUserId,
-            email: emailTrimmed,
-            nickname: newNickname.trim() || '新用户',
-            is_admin: false,
-          });
-        if (upsertError) throw upsertError;
+      const functionUrl = `${supabaseUrl}/functions/v1/admin-create-user`;
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({
+          email: emailTrimmed,
+          nickname: newNickname.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '创建用户失败');
       }
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');

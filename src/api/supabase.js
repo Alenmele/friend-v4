@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // 读取环境变量
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // 参数校验：环境变量缺失时给出明确提示
 if (!supabaseUrl || !supabaseAnonKey) {
