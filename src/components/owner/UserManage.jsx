@@ -50,7 +50,6 @@ export default function UserManage() {
 
   // 新增用户：通过 admin_create_user RPC 免邮件创建（不切换会话）
   const handleAddUser = async () => {
-    // 校验邮箱
     const emailTrimmed = newEmail.trim();
     if (!emailTrimmed) {
       setEmailError('邮箱不能为空');
@@ -62,7 +61,6 @@ export default function UserManage() {
       return;
     }
 
-    // 检查邮箱是否已存在
     const exists = users.some((u) => u.email === emailTrimmed);
     if (exists) {
       setEmailError('该邮箱已被注册');
@@ -73,11 +71,35 @@ export default function UserManage() {
     setEmailError('');
 
     try {
-      const { data, error } = await supabase.rpc('admin_create_user', {
-        p_email: emailTrimmed,
-        p_nickname: newNickname.trim() || '新用户',
+      const { data: { session: adminSession } } = await supabase.auth.getSession();
+      const adminAccessToken = adminSession?.access_token;
+      const adminRefreshToken = adminSession?.refresh_token;
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: emailTrimmed,
+        password: 'Aa123456',
       });
-      if (error) throw error;
+      if (signUpError) throw signUpError;
+
+      if (adminAccessToken && adminRefreshToken) {
+        await supabase.auth.setSession({
+          access_token: adminAccessToken,
+          refresh_token: adminRefreshToken,
+        });
+      }
+
+      const newUserId = signUpData.user?.id;
+      if (newUserId) {
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: newUserId,
+            email: emailTrimmed,
+            nickname: newNickname.trim() || '新用户',
+            is_admin: false,
+          });
+        if (upsertError) throw upsertError;
+      }
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');
       setShowAddModal(false);
