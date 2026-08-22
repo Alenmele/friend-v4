@@ -6,19 +6,23 @@ import { compressImage, blobToFile, generateFilename } from '../../utils/imageCo
  * - 支持上传（含压缩至 1024px）
  * - 动态显示：已上传 + 剩余空位（最多 maxCount 张）
  * - 锁定状态
+ * - 只读模式：显示照片但无添加/删除按钮，支持点击放大
  * - 进度环
  *
  * @param {Array} value - 已上传照片 URL 数组
  * @param {function} onChange - (newUrls) => void
  * @param {number} maxCount - 最大张数，默认 3
- * @param {boolean} locked - 是否锁定
+ * @param {boolean} locked - 是否锁定（显示🔒图标）
+ * @param {boolean} readonly - 只读浏览模式（显示照片但无添加/删除）
  * @param {function} onUpload - 自定义上传函数 (file, filename) => Promise<url>
+ * @param {function} onPhotoClick - 点击照片回调 (index) => void
  */
 export default function PhotoGrid({
   value = [],
   onChange,
   maxCount = 3,
   locked = false,
+  readonly = false,
   onUpload,
   onPhotoClick,
 }) {
@@ -27,7 +31,7 @@ export default function PhotoGrid({
   const [progress, setProgress] = useState(0);
 
   const handleClick = () => {
-    if (locked || uploading) return;
+    if (locked || readonly || uploading) return;
     if (value.length >= maxCount) return;
     fileInputRef.current?.click();
   };
@@ -35,27 +39,23 @@ export default function PhotoGrid({
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ''; // 重置以便重复选择同一文件
+    e.target.value = '';
 
     setUploading(true);
     setProgress(0);
     try {
-      // 压缩
       setProgress(30);
       const compressedBlob = await compressImage(file, { maxSize: 1024, quality: 0.85 });
       setProgress(70);
 
-      // 获取扩展名
       const ext = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
       const filename = generateFilename(ext);
       const compressedFile = blobToFile(compressedBlob, filename);
 
-      // 上传
       let url;
       if (onUpload) {
         url = await onUpload(compressedFile, filename);
       } else {
-        // 默认占位（无后端时返回本地预览 URL）
         url = URL.createObjectURL(compressedBlob);
       }
       setProgress(100);
@@ -106,7 +106,7 @@ export default function PhotoGrid({
               className={`w-full h-full object-cover ${onPhotoClick ? 'cursor-zoom-in' : ''}`}
               onClick={onPhotoClick ? () => onPhotoClick(i) : undefined}
             />
-            {!locked && (
+            {!locked && !readonly && (
               <button
                 type="button"
                 onClick={() => handleRemove(i)}
@@ -140,8 +140,8 @@ export default function PhotoGrid({
           </div>
         )}
 
-        {/* 剩余空位 */}
-        {!uploading &&
+        {/* 只读模式：不显示添加按钮 */}
+        {!readonly && !uploading &&
           value.length < maxCount &&
           Array.from({ length: maxCount - value.length }).map((_, i) => (
             <button
@@ -156,17 +156,21 @@ export default function PhotoGrid({
           ))}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      {!readonly && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      )}
 
-      <div className="text-[11px] text-text-light mt-1.5">
-        支持 jpg / png / webp，单张 ≤5MB
-      </div>
+      {!readonly && (
+        <div className="text-[11px] text-text-light mt-1.5">
+          支持 jpg / png / webp，单张 ≤5MB
+        </div>
+      )}
     </>
   );
 }

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LockHeader from './LockHeader.jsx';
 import Card, { CardLabel, CardValue } from '../common/Card.jsx';
 import PhotoGrid from '../common/PhotoGrid.jsx';
+import ImageModal from '../common/ImageModal.jsx';
 import Button from '../common/Button.jsx';
 import Tag from '../common/Tag.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -20,6 +22,7 @@ export default function VisitorStatusView({
 }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [imageModal, setImageModal] = useState({ open: false, index: 0 });
 
   // 异常场景
   if (scenario === 'loading') {
@@ -87,6 +90,8 @@ export default function VisitorStatusView({
       );
     };
 
+    const photos = ownerProfile?.photos || [];
+
     return (
       <div className="phone-body">
         <LockHeader
@@ -123,14 +128,28 @@ export default function VisitorStatusView({
 
         <Card>
           <CardLabel>🖼️ 个人照片</CardLabel>
-          <PhotoGrid
-            value={ownerProfile?.photos || []}
-            maxCount={3}
-            locked={false}
-          />
+          {photos.length > 0 ? (
+            <PhotoGrid
+              value={photos}
+              maxCount={3}
+              readonly={true}
+              onPhotoClick={(i) => setImageModal({ open: true, index: i })}
+            />
+          ) : (
+            <div className="text-sm text-text-light py-2">暂无照片</div>
+          )}
         </Card>
 
         <SafetyTip />
+
+        {/* 图片放大查看 */}
+        <ImageModal
+          open={imageModal.open}
+          images={photos}
+          index={imageModal.index}
+          onClose={() => setImageModal({ open: false, index: 0 })}
+          onIndexChange={(i) => setImageModal({ open: true, index: i })}
+        />
       </div>
     );
   }
