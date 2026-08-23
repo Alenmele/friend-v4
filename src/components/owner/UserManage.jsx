@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import Button from '../common/Button.jsx';
 import Input from '../common/Input.jsx';
 import Modal from '../common/Modal.jsx';
@@ -48,7 +49,7 @@ export default function UserManage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  // 新增用户：通过 admin_create_user RPC 免邮件创建（不切换会话）
+  // 新增用户：使用临时客户端 signUp 创建用户，不影响管理员会话
   const handleAddUser = async () => {
     const emailTrimmed = newEmail.trim();
     if (!emailTrimmed) {
@@ -71,30 +72,29 @@ export default function UserManage() {
     setEmailError('');
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('请先登录');
-      }
-
-      const functionUrl = `${supabaseUrl}/functions/v1/admin-create-user`;
-
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseAnonKey,
-        },
-        body: JSON.stringify({
-          email: emailTrimmed,
-          nickname: newNickname.trim(),
-        }),
+      // 使用临时客户端调用 signUp，不影响管理员当前会话
+      const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
 
-      const result = await response.json();
+      const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
+        email: emailTrimmed,
+        password: 'Aa123456',
+      });
 
-      if (!response.ok) {
-        throw new Error(result.error || '创建用户失败');
+      if (signUpError) throw signUpError;
+
+      const newUserId = signUpData.user?.id;
+      if (newUserId) {
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: newUserId,
+            email: emailTrimmed,
+            nickname: newNickname.trim() || '新用户',
+            is_admin: false,
+          });
+        if (upsertError) throw upsertError;
       }
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');
