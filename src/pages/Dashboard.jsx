@@ -157,7 +157,7 @@ export default function Dashboard() {
             tabs={[
               { key: 'profile', label: '📝 资料编辑' },
               { key: 'visitors', label: '📋 收到的访客', badge: stats.pending || undefined },
-              { key: 'users', label: '👥 用户管理' },
+              ...(profile?.is_admin ? [{ key: 'users', label: '👥 用户管理' }] : []),
             ]}
             active={tab}
             onChange={handleTabChange}
@@ -193,7 +193,7 @@ export default function Dashboard() {
             />
           )}
 
-          {tab === 'users' && (
+          {tab === 'users' && profile?.is_admin && (
             <UserManage />
           )}
         </div>
