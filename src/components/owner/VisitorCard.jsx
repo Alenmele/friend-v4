@@ -19,6 +19,7 @@ export default function VisitorCard({ visitor, onAction }) {
   const { showToast } = useToast();
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [allowReapply, setAllowReapply] = useState(true);
   const [acting, setActing] = useState(false);
   const [imageModal, setImageModal] = useState({ open: false, index: 0 });
@@ -69,6 +70,53 @@ export default function VisitorCard({ visitor, onAction }) {
       if (error) throw error;
       showToast(`↩️ 已撤销${visitor.nickname}的权限`, 'success');
       setShowRevokeModal(false);
+      onAction?.();
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setActing(true);
+    try {
+      // 删除访客照片（如果有）
+      if (visitor.photos && visitor.photos.length > 0) {
+        const photoPaths = visitor.photos.map((url) => {
+          try {
+            const urlObj = new URL(url);
+            const parts = urlObj.pathname.split('/');
+            return parts.slice(-2).join('/');
+          } catch {
+            return null;
+          }
+        }).filter(Boolean);
+
+        if (photoPaths.length > 0) {
+          await supabase.storage.from('visitor-photos').remove(photoPaths);
+        }
+      }
+
+      // 删除访客二维码（如果有）
+      if (visitor.wechat_qr) {
+        try {
+          const qrUrl = new URL(visitor.wechat_qr);
+          const qrParts = qrUrl.pathname.split('/');
+          const qrPath = qrParts.slice(-2).join('/');
+          await supabase.storage.from('visitor-photos').remove([qrPath]);
+        } catch {}
+      }
+
+      // 删除访客记录
+      const { error } = await supabase
+        .from('visitors')
+        .delete()
+        .eq('id', visitor.id);
+
+      if (error) throw error;
+      showToast(`🗑️ 已删除${visitor.nickname}的记录`, 'success');
+      setShowDeleteModal(false);
       onAction?.();
     } catch (err) {
       showToast(getErrorMessage(err), 'error');
@@ -195,6 +243,16 @@ export default function VisitorCard({ visitor, onAction }) {
         </div>
       )}
 
+      {/* 删除按钮（所有状态可用） */}
+      <div className="mt-2.5">
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-[11px] text-text-light hover:text-danger transition cursor-pointer bg-transparent border-none"
+        >
+          🗑️ 删除此记录
+        </button>
+      </div>
+
       {/* 拒绝弹窗（含 allow_reapply 开关） */}
       <Modal
         open={showRejectModal}
@@ -235,6 +293,19 @@ export default function VisitorCard({ visitor, onAction }) {
         loading={acting}
         onCancel={() => setShowRevokeModal(false)}
         onConfirm={handleRevoke}
+      />
+
+      {/* 删除记录弹窗 */}
+      <Modal
+        open={showDeleteModal}
+        title={`确认删除 ${visitor.nickname} 的记录`}
+        content="删除后该访客的所有信息将永久清除，包括照片和二维码，且不可恢复。"
+        confirmText="确认删除"
+        cancelText="取消"
+        variant="danger"
+        loading={acting}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
       />
 
       {/* 图片放大查看 */}
