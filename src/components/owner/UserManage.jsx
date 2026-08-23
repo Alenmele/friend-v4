@@ -86,15 +86,14 @@ export default function UserManage() {
 
       const newUserId = signUpData.user?.id;
       if (newUserId) {
-        const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: newUserId,
-            email: emailTrimmed,
-            nickname: newNickname.trim() || '新用户',
-            is_admin: false,
-          });
-        if (upsertError) throw upsertError;
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_create_profile', {
+          p_user_id: newUserId,
+          p_email: emailTrimmed,
+          p_nickname: newNickname.trim() || '新用户',
+          p_is_admin: false,
+        });
+        if (rpcError) throw rpcError;
+        if (rpcResult?.error) throw new Error(rpcResult.error);
       }
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');
