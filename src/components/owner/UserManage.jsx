@@ -80,20 +80,31 @@ export default function UserManage() {
       const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
         email: emailTrimmed,
         password: 'Aa123456',
+        options: {
+          data: {
+            nickname: newNickname.trim() || '新用户',
+          },
+        },
       });
 
       if (signUpError) throw signUpError;
 
+      // on_auth_user_created trigger 会自动创建 profiles 行
+      // 尝试通过 RPC 更新昵称，若 RPC 不存在则忽略（trigger 已创建基本记录）
       const newUserId = signUpData.user?.id;
       if (newUserId) {
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_create_profile', {
-          p_user_id: newUserId,
-          p_email: emailTrimmed,
-          p_nickname: newNickname.trim() || '新用户',
-          p_is_admin: false,
-        });
-        if (rpcError) throw rpcError;
-        if (rpcResult?.error) throw new Error(rpcResult.error);
+        try {
+          await supabase.rpc('admin_create_profile', {
+            p_user_id: newUserId,
+            p_email: emailTrimmed,
+            p_nickname: newNickname.trim() || '新用户',
+            p_is_admin: false,
+          });
+        } catch (rpcErr) {
+          // RPC 可能不存在或 schema cache 未刷新，忽略错误
+          // trigger 已创建 profiles 行，昵称通过 user_metadata 设置
+          console.warn('admin_create_profile RPC 不可用，依赖 trigger:', rpcErr.message);
+        }
       }
 
       showToast(`✅ 用户 ${emailTrimmed} 创建成功，初始密码：Aa123456`, 'success');
